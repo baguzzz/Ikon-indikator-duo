@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynamic Status Indicator</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f2f2f7;
+    font-family: system-ui, -apple-system, 'SF Pro Display', sans-serif;
+    gap: 40px;
+    padding: 40px 20px;
+  }
+
+  /* ================= KONTAINER INDIKATOR ================= */
+  .status-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .indicator-svg {
+    width: 160px;
+    height: 160px;
+    color: #000000;
+    transition: color 0.3s ease;
+  }
+
+  /* Warna merah saat baterai lemah */
+  .indicator-svg.low-battery {
+    color: #FF3B30;
+  }
+
+  /* ================= INFO TEXT ================= */
+  .info {
+    text-align: center;
+  }
+
+  .info h2 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #000;
+    margin-bottom: 8px;
+  }
+
+  .info p {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.5;
+  }
+
+  /* ================= PANEL KONTROL ================= */
+  .controls {
+    width: 100%;
+    max-width: 380px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .control-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .control-group label span {
+    color: #007AFF;
+    font-weight: 700;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #E5E5EA;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #007AFF;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 122, 255, 0.4);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #007AFF;
+    cursor: pointer;
+    border: none;
+  }
+
+  /* ================= TOMBOL AKSI ================= */
+  .actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    flex: 1;
+    min-width: 100px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 12px;
+    background: #007AFF;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+
+  button:hover {
+    background: #0051D5;
+  }
+
+  button:active {
+    transform: scale(0.97);
+  }
+
+  button.secondary {
+    background: #E5E5EA;
+    color: #333;
+  }
+
+  button.secondary:hover {
+    background: #D1D1D6;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= KONTAINER INDIKATOR ================= -->
+<div class="status-indicator">
+  <svg class="indicator-svg" id="indicator" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" fill="none">
+    
+    <!-- 🔋 BATERAI: Track Latar (Abu-abu) -->
+    <path id="battery-track"
+          d="M 28.18 91.82 A 45 45 0 1 1 91.82 91.82"
+          stroke="currentColor"
+          stroke-width="8"
+          stroke-linecap="round"
+          fill="none"
+          opacity="0.15"/>
+
+    <!-- 🔋 BATERAI: Progress Arc (berubah sesuai persen) -->
+    <path id="battery-progress"
+          d="M 28.18 91.82 A 45 45 0 1 1 91.82 91.82"
+          stroke="currentColor"
+          stroke-width="8"
+          stroke-linecap="round"
+          fill="none"
+          stroke-dasharray="212.06"
+          stroke-dashoffset="106.03"/>
+
+    <!-- 📡 WIFI: Layer 1 (Dot) -->
+    <g transform="translate(35, 36.25) scale(2.5)" 
+       stroke="currentColor" 
+       stroke-width="1.5" 
+       stroke-linecap="round" 
+       fill="none">
+      
+      <circle id="wifi-dot" cx="10" cy="12.2" r="1.1" 
+              fill="currentColor" stroke="none"/>
+      
+      <path id="wifi-arc-1" 
+            d="M7.53 10.53 A3.5 3.5 0 0 1 12.47 10.53"/>
+      
+      <path id="wifi-arc-2" 
+            d="M5.76 8.76 A6 6 0 0 1 14.24 8.76"/>
+      
+      <!-- Ikon silang untuk WiFi 0 bar -->
+      <line id="wifi-slash" 
+            x1="4" y1="14" x2="16" y2="2" 
+            stroke-width="1.5" 
+            opacity="0"/>
+    </g>
+
+    <!-- 📶 SINYAL: Dots (4 titik di bawah busur) -->
+    <circle id="signal-dot-1" cx="38" cy="98"  r="3.5" fill="currentColor"/>
+    <circle id="signal-dot-2" cx="52" cy="101" r="3.5" fill="currentColor"/>
+    <circle id="signal-dot-3" cx="68" cy="101" r="3.5" fill="currentColor"/>
+    <circle id="signal-dot-4" cx="82" cy="98"  r="3.5" fill="currentColor"/>
+
+  </svg>
+
+  <!-- Info Text -->
+  <div class="info">
+    <h2 id="display-percent">50%</h2>
+    <p id="display-status">Baterai Normal · Sinyal 2/4 · WiFi 3/3</p>
+  </div>
+</div>
+
+<!-- ================= PANEL KONTROL ================= -->
+<div class="controls">
+  
+  <div class="control-group">
+    <label>🔋 Baterai <span id="label-battery">50%</span></label>
+    <input type="range" id="input-battery" min="0" max="100" value="50" step="10">
+  </div>
+
+  <div class="control-group">
+    <label>📶 Sinyal <span id="label-signal">2 bar</span></label>
+    <input type="range" id="input-signal" min="0" max="4" value="2" step="1">
+  </div>
+
+  <div class="control-group">
+    <label>📡 WiFi <span id="label-wifi">3 bar</span></label>
+    <input type="range" id="input-wifi" min="0" max="3" value="3" step="1">
+  </div>
+
+  <div class="actions">
+    <button id="btn-simulate">▶️ Simulasi Realtime</button>
+    <button id="btn-reset" class="secondary">🔄 Reset</button>
+  </div>
+
+</div>
+
+<!-- ================= JAVASCRIPT ================= -->
+<script>
+(function() {
+  'use strict';
+
+  // ============ KONFIGURASI GEOMETRI ============
+  const ARC_LENGTH = 212.06;      // Panjang total busur 270°
+  const MAX_BATTERY = 100;
+  const MAX_SIGNAL = 4;
+  const MAX_WIFI = 3;
+  const LOW_BATTERY_THRESHOLD = 20; // Merah jika ≤ 20%
+
+  // ============ ELEMEN DOM ============
+  const els = {
+    svg:         document.getElementById('indicator'),
+    batteryArc:  document.getElementById('battery-progress'),
+    wifiDot:     document.getElementById('wifi-dot'),
+    wifiArc1:    document.getElementById('wifi-arc-1'),
+    wifiArc2:    document.getElementById('wifi-arc-2'),
+    wifiSlash:   document.getElementById('wifi-slash'),
+    sigDot1:     document.getElementById('signal-dot-1'),
+    sigDot2:     document.getElementById('signal-dot-2'),
+    sigDot3:     document.getElementById('signal-dot-3'),
+    sigDot4:     document.getElementById('signal-dot-4'),
+    percent:     document.getElementById('display-percent'),
+    status:      document.getElementById('display-status'),
+    inputBattery:document.getElementById('input-battery'),
+    inputSignal: document.getElementById('input-signal'),
+    inputWifi:   document.getElementById('input-wifi'),
+    labelBattery:document.getElementById('label-battery'),
+    labelSignal: document.getElementById('label-signal'),
+    labelWifi:   document.getElementById('label-wifi'),
+    btnSimulate: document.getElementById('btn-simulate'),
+    btnReset:    document.getElementById('btn-reset')
+  };
+
+  // ============ STATE ============
+  let state = {
+    battery: 50,
+    signal:  2,
+    wifi:    3
+  };
+
+  let simulationInterval = null;
+
+  // ============ FUNGSI UPDATE UTAMA ============
+  function updateIndicator(battery, signal, wifi) {
+    // Simpan state
+    state.battery = Math.max(0, Math.min(MAX_BATTERY, battery));
+    state.signal  = Math.max(0, Math.min(MAX_SIGNAL, signal));
+    state.wifi    = Math.max(0, Math.min(MAX_WIFI, wifi));
+
+    // ---------- 1. BATERAI (Busur Progres) ----------
+    const batteryRatio = state.battery / MAX_BATTERY;
+    const offset = ARC_LENGTH - (batteryRatio * ARC_LENGTH);
+    els.batteryArc.setAttribute('stroke-dashoffset', offset.toFixed(2));
+
+    // Warna merah saat baterai lemah
+    if (state.battery <= LOW_BATTERY_THRESHOLD) {
+      els.svg.classList.add('low-battery');
+    } else {
+      els.svg.classList.remove('low-battery');
+    }
+
+    // ---------- 2. SINYAL (Dots) ----------
+    const signalDots = [els.sigDot1, els.sigDot2, els.sigDot3, els.sigDot4];
+    signalDots.forEach((dot, index) => {
+      // Index 0 = bar 1, index 3 = bar 4
+      // Sinyal level N berarti N dot pertama aktif
+      const isActive = index < state.signal;
+      dot.setAttribute('opacity', isActive ? '1' : '0.2');
+    });
+
+    // ---------- 3. WIFI (Ikon) ----------
+    // Dot selalu tampil (bar 1)
+    els.wifiDot.setAttribute('opacity', state.wifi >= 1 ? '1' : '0.3');
+    
+    // Busur kecil (bar 2)
+    els.wifiArc1.setAttribute('opacity', state.wifi >= 2 ? '1' : '0');
+    
+    // Busur sedang (bar 3)
+    els.wifiArc2.setAttribute('opacity', state.wifi >= 3 ? '1' : '0');
+
+    // Garis silang untuk WiFi 0
+    els.wifiSlash.setAttribute('opacity', state.wifi === 0 ? '0.7' : '0');
+
+    // ---------- 4. TEXT INFO ----------
+    els.percent.textContent = state.battery + '%';
+    
+    const batteryStatus = state.battery <= LOW_BATTERY_THRESHOLD ? 'Baterai Lemah' : 'Baterai Normal';
+    const signalStatus  = `Sinyal ${state.signal}/4`;
+    const wifiStatus    = state.wifi === 0 ? 'WiFi Off' : `WiFi ${state.wifi}/${MAX_WIFI}`;
+    els.status.textContent = `${batteryStatus} · ${signalStatus} · ${wifiStatus}`;
+
+    // ---------- 5. UPDATE SLIDER & LABEL ----------
+    els.inputBattery.value = state.battery;
+    els.inputSignal.value  = state.signal;
+    els.inputWifi.value    = state.wifi;
+    
+    els.labelBattery.textContent = state.battery + '%';
+    els.labelSignal.textContent  = state.signal + ' bar';
+    els.labelWifi.textContent    = state.wifi + ' bar';
+  }
+
+  // ============ EVENT LISTENERS (Slider) ============
+  els.inputBattery.addEventListener('input', (e) => {
+    updateIndicator(parseInt(e.target.value), state.signal, state.wifi);
+  });
+
+  els.inputSignal.addEventListener('input', (e) => {
+    updateIndicator(state.battery, parseInt(e.target.value), state.wifi);
+  });
+
+  els.inputWifi.addEventListener('input', (e) => {
+    updateIndicator(state.battery, state.signal, parseInt(e.target.value));
+  });
+
+  // ============ SIMULASI REALTIME ============
+  els.btnSimulate.addEventListener('click', () => {
+    if (simulationInterval) {
+      // Stop simulasi
+      clearInterval(simulationInterval);
+      simulationInterval = null;
+      els.btnSimulate.textContent = '▶️ Simulasi Realtime';
+      return;
+    }
+
+    // Mulai simulasi
+    els.btnSimulate.textContent = '⏸️ Stop Simulasi';
+    
+    let battery = state.battery;
+    let signal  = state.signal;
+    let wifi    = state.wifi;
+
+    simulationInterval = setInterval(() => {
+      // Baterai turun perlahan (loop kembali ke 100 setelah 0)
+      battery -= 1;
+      if (battery < 0) battery = 100;
+
+      // Sinyal berubah acak
+      if (Math.random() < 0.2) {
+        signal = Math.floor(Math.random() * (MAX_SIGNAL + 1));
+      }
+
+      // WiFi berubah acak
+      if (Math.random() < 0.15) {
+        wifi = Math.floor(Math.random() * (MAX_WIFI + 1));
+      }
+
+      updateIndicator(battery, signal, wifi);
+    }, 500); // Update setiap 500ms
+  });
+
+  // ============ RESET ============
+  els.btnReset.addEventListener('click', () => {
+    if (simulationInterval) {
+      clearInterval(simulationInterval);
+      simulationInterval = null;
+      els.btnSimulate.textContent = '▶️ Simulasi Realtime';
+    }
+    updateIndicator(50, 2, 3);
+  });
+
+  // ============ INIT ============
+  updateIndicator(50, 2, 3);
+
+})();
+</script>
+
+</body>
+</html>
